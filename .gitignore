@@ -53,3 +53,24 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+data/
+*.trace
+obj/
+*.log
+denoising
+
+# Ambienti virtuali Python
+venv/
+env/
+mio_ambiente/
+__pycache__/
+
+# Dati e Dataset generati dallo script
+*.bin
+*.dat
+*.csv
+
+# File temporanei del sistema operativo
+.DS_Store
+Thumbs.db
