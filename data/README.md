@@ -1,0 +1,1 @@
+# In questa directory verranno generate le matrici e i relativi Ground-truth (lanciare lo script dataset_generator.py)

@@ -1,0 +1,655 @@
+==========================================
+ INIZIO BENCHMARK (MAC)
+ Thread OpenMP: 8
+ Processi MPI: 4
+==========================================
+[*] Compilazione in corso...
+[*] Compilazione terminata.
+
+##########################################
+>>> TEST MATRICE: 512 x 512 <<<
+##########################################
+
+--- 1. Seriale Naive ---
+[*] Allocazione memoria per matrice 512x512
+[*] Lettura del file data/matrix_512.txt
+[*] Valore in basso a destra matrix[511][511] = 0.553882
+
+[*] Modalita': NAIVE (Array 2D, Stride elevato)
+
+======================================================
+[*] Tempo Metodo Potenze : 0.003193 secondi
+[*] Tempo Algoritmo QR   : 18.203760 secondi
+[*] TEMPO TOTALE         : 18.206953 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 169.055400
+    2: 22.266468
+    3: 22.003067
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.971130e-03
+[*] Errore Relativo Massimo : 2.487441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 2. Seriale Opt ---
+[*] Allocazione memoria per matrice 512x512
+[*] Lettura del file data/matrix_512.txt
+[*] Valore in basso a destra matrix[511][511] = 0.553882
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.000766 secondi
+[*] Tempo Algoritmo QR   : 2.223210 secondi
+[*] TEMPO TOTALE         : 2.223976 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 169.055400
+    2: 22.266468
+    3: 22.003067
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.971130e-03
+[*] Errore Relativo Massimo : 2.487441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 3. Seriale Opt Blocked ---
+[*] Allocazione memoria per matrice 512x512
+[*] Lettura del file data/matrix_512.txt
+[*] Valore in basso a destra matrix[511][511] = 0.553882
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.000769 secondi
+[*] Tempo Algoritmo QR   : 2.301215 secondi
+[*] TEMPO TOTALE         : 2.301984 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 169.055400
+    2: 22.266468
+    3: 22.003067
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.971130e-03
+[*] Errore Relativo Massimo : 2.487441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 4. OpenMP Opt ---
+[*] Allocazione memoria per matrice 512x512
+[*] Lettura del file data/matrix_512.txt
+[*] Valore in basso a destra matrix[511][511] = 0.553882
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.001187 secondi
+[*] Tempo Algoritmo QR   : 1.635566 secondi
+[*] TEMPO TOTALE         : 1.636753 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 169.055400
+    2: 22.266468
+    3: 22.003067
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.971130e-03
+[*] Errore Relativo Massimo : 2.487441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 5. OpenMP Opt Blocked ---
+[*] Allocazione memoria per matrice 512x512
+[*] Lettura del file data/matrix_512.txt
+[*] Valore in basso a destra matrix[511][511] = 0.553882
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.001122 secondi
+[*] Tempo Algoritmo QR   : 1.678454 secondi
+[*] TEMPO TOTALE         : 1.679576 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 169.055400
+    2: 22.266468
+    3: 22.003067
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.971130e-03
+[*] Errore Relativo Massimo : 2.487441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 6. MPI (Ibrido MPI + OpenMP) ---
+
+======================================================
+[*] INIZIO ESECUZIONE DISTRIBUITA (MPI + OpenMP)
+[*] Nodi MPI: 4 | Matrice: 512x512
+[*] Rank 0: Lettura del file data/matrix_512.txt...
+
+[*] Esecuzione Metodo delle Potenze (Distribuito)...
+[*] Metodo delle potenze convergente in 4 iterazioni.
+[*] Autovalore dominante trovato: 169.055400
+
+[*] Esecuzione Algoritmo QR Iterativo (Ibrido)...
+
+======================================================
+[*] Tempo Metodo Potenze (MPI) : 0.006770 secondi
+[*] Tempo Algoritmo QR         : 2.006404 secondi
+[*] TEMPO TOTALE (MPI+OpenMP)  : 2.013174 secondi
+======================================================
+[*] Primi 3 valori singolari trovati:
+    1: 169.055400
+    2: 22.266468
+    3: 22.003067
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.971130e-03
+[*] Errore Relativo Massimo : 2.487441e-02
+======================================================
+
+##########################################
+>>> TEST MATRICE: 1024 x 1024 <<<
+##########################################
+
+--- 1. Seriale Naive ---
+[*] Allocazione memoria per matrice 1024x1024
+[*] Lettura del file data/matrix_1024.txt
+[*] Valore in basso a destra matrix[1023][1023] = 0.697227
+
+[*] Modalita': NAIVE (Array 2D, Stride elevato)
+
+======================================================
+[*] Tempo Metodo Potenze : 0.011223 secondi
+[*] Tempo Algoritmo QR   : 176.089235 secondi
+[*] TEMPO TOTALE         : 176.100458 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 341.877973
+    2: 31.492174
+    3: 31.419667
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.128240e-03
+[*] Errore Relativo Massimo : 1.612441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 2. Seriale Opt ---
+[*] Allocazione memoria per matrice 1024x1024
+[*] Lettura del file data/matrix_1024.txt
+[*] Valore in basso a destra matrix[1023][1023] = 0.697227
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.003651 secondi
+[*] Tempo Algoritmo QR   : 17.730640 secondi
+[*] TEMPO TOTALE         : 17.734291 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 341.877973
+    2: 31.492174
+    3: 31.419667
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.128240e-03
+[*] Errore Relativo Massimo : 1.612441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 3. Seriale Opt Blocked ---
+[*] Allocazione memoria per matrice 1024x1024
+[*] Lettura del file data/matrix_1024.txt
+[*] Valore in basso a destra matrix[1023][1023] = 0.697227
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.003622 secondi
+[*] Tempo Algoritmo QR   : 19.128230 secondi
+[*] TEMPO TOTALE         : 19.131852 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 341.877973
+    2: 31.492174
+    3: 31.419667
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.128240e-03
+[*] Errore Relativo Massimo : 1.612441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 4. OpenMP Opt ---
+[*] Allocazione memoria per matrice 1024x1024
+[*] Lettura del file data/matrix_1024.txt
+[*] Valore in basso a destra matrix[1023][1023] = 0.697227
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.003673 secondi
+[*] Tempo Algoritmo QR   : 7.048862 secondi
+[*] TEMPO TOTALE         : 7.052535 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 341.877973
+    2: 31.492174
+    3: 31.419667
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.128240e-03
+[*] Errore Relativo Massimo : 1.612441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 5. OpenMP Opt Blocked ---
+[*] Allocazione memoria per matrice 1024x1024
+[*] Lettura del file data/matrix_1024.txt
+[*] Valore in basso a destra matrix[1023][1023] = 0.697227
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.003401 secondi
+[*] Tempo Algoritmo QR   : 7.318692 secondi
+[*] TEMPO TOTALE         : 7.322093 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 341.877973
+    2: 31.492174
+    3: 31.419667
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.128240e-03
+[*] Errore Relativo Massimo : 1.612441e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 6. MPI (Ibrido MPI + OpenMP) ---
+
+======================================================
+[*] INIZIO ESECUZIONE DISTRIBUITA (MPI + OpenMP)
+[*] Nodi MPI: 4 | Matrice: 1024x1024
+[*] Rank 0: Lettura del file data/matrix_1024.txt...
+
+[*] Esecuzione Metodo delle Potenze (Distribuito)...
+[*] Metodo delle potenze convergente in 4 iterazioni.
+[*] Autovalore dominante trovato: 341.877973
+
+[*] Esecuzione Algoritmo QR Iterativo (Ibrido)...
+
+======================================================
+[*] Tempo Metodo Potenze (MPI) : 0.007431 secondi
+[*] Tempo Algoritmo QR         : 8.768817 secondi
+[*] TEMPO TOTALE (MPI+OpenMP)  : 8.776248 secondi
+======================================================
+[*] Primi 3 valori singolari trovati:
+    1: 341.877973
+    2: 31.492174
+    3: 31.419667
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 2.128240e-03
+[*] Errore Relativo Massimo : 1.612441e-02
+======================================================
+
+##########################################
+>>> TEST MATRICE: 2048 x 2048 <<<
+##########################################
+
+--- 1. Seriale Naive ---
+[*] Allocazione memoria per matrice 2048x2048
+[*] Lettura del file data/matrix_2048.txt
+[*] Valore in basso a destra matrix[2047][2047] = -0.015214
+
+[*] Modalita': NAIVE (Array 2D, Stride elevato)
+
+======================================================
+[*] Tempo Metodo Potenze : 0.074092 secondi
+[*] Tempo Algoritmo QR   : 2417.594241 secondi
+[*] TEMPO TOTALE         : 2417.668333 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 680.458787
+    2: 44.579882
+    3: 44.754629
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.477149e-03
+[*] Errore Relativo Massimo : 1.339319e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 2. Seriale Opt ---
+[*] Allocazione memoria per matrice 2048x2048
+[*] Lettura del file data/matrix_2048.txt
+[*] Valore in basso a destra matrix[2047][2047] = -0.015214
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.016522 secondi
+[*] Tempo Algoritmo QR   : 155.887014 secondi
+[*] TEMPO TOTALE         : 155.903536 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 680.458787
+    2: 44.579882
+    3: 44.754629
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.477149e-03
+[*] Errore Relativo Massimo : 1.339319e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 3. Seriale Opt Blocked ---
+[*] Allocazione memoria per matrice 2048x2048
+[*] Lettura del file data/matrix_2048.txt
+[*] Valore in basso a destra matrix[2047][2047] = -0.015214
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.016470 secondi
+[*] Tempo Algoritmo QR   : 154.760468 secondi
+[*] TEMPO TOTALE         : 154.776938 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 680.458787
+    2: 44.579882
+    3: 44.754629
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.477149e-03
+[*] Errore Relativo Massimo : 1.339319e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 4. OpenMP Opt ---
+[*] Allocazione memoria per matrice 2048x2048
+[*] Lettura del file data/matrix_2048.txt
+[*] Valore in basso a destra matrix[2047][2047] = -0.015214
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.049414 secondi
+[*] Tempo Algoritmo QR   : 48.658164 secondi
+[*] TEMPO TOTALE         : 48.707578 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 680.458787
+    2: 44.579882
+    3: 44.754629
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.477149e-03
+[*] Errore Relativo Massimo : 1.339319e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 5. OpenMP Opt Blocked ---
+[*] Allocazione memoria per matrice 2048x2048
+[*] Lettura del file data/matrix_2048.txt
+[*] Valore in basso a destra matrix[2047][2047] = -0.015214
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.050366 secondi
+[*] Tempo Algoritmo QR   : 49.408661 secondi
+[*] TEMPO TOTALE         : 49.459027 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 680.458787
+    2: 44.579882
+    3: 44.754629
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.477149e-03
+[*] Errore Relativo Massimo : 1.339319e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 6. MPI (Ibrido MPI + OpenMP) ---
+
+======================================================
+[*] INIZIO ESECUZIONE DISTRIBUITA (MPI + OpenMP)
+[*] Nodi MPI: 4 | Matrice: 2048x2048
+[*] Rank 0: Lettura del file data/matrix_2048.txt...
+
+[*] Esecuzione Metodo delle Potenze (Distribuito)...
+[*] Metodo delle potenze convergente in 4 iterazioni.
+[*] Autovalore dominante trovato: 680.458787
+
+[*] Esecuzione Algoritmo QR Iterativo (Ibrido)...
+
+======================================================
+[*] Tempo Metodo Potenze (MPI) : 0.032064 secondi
+[*] Tempo Algoritmo QR         : 65.404553 secondi
+[*] TEMPO TOTALE (MPI+OpenMP)  : 65.436617 secondi
+======================================================
+[*] Primi 3 valori singolari trovati:
+    1: 680.458787
+    2: 44.579882
+    3: 44.754629
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.477149e-03
+[*] Errore Relativo Massimo : 1.339319e-02
+======================================================
+
+##########################################
+>>> TEST MATRICE: 4096 x 4096 <<<
+##########################################
+
+--- 1. Seriale Naive saltata (troppo lenta per 4096) ---
+
+--- 2. Seriale Opt ---
+[*] Allocazione memoria per matrice 4096x4096
+[*] Lettura del file data/matrix_4096.txt
+[*] Valore in basso a destra matrix[4095][4095] = -0.708355
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.079206 secondi
+[*] Tempo Algoritmo QR   : 1653.166632 secondi
+[*] TEMPO TOTALE         : 1653.245838 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 1345.843156
+    2: 63.272525
+    3: 63.378508
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.055765e-03
+[*] Errore Relativo Massimo : 1.530211e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 3. Seriale Opt Blocked ---
+[*] Allocazione memoria per matrice 4096x4096
+[*] Lettura del file data/matrix_4096.txt
+[*] Valore in basso a destra matrix[4095][4095] = -0.708355
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.080942 secondi
+[*] Tempo Algoritmo QR   : 1270.749350 secondi
+[*] TEMPO TOTALE         : 1270.830292 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 1345.843156
+    2: 63.272525
+    3: 63.378508
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.055765e-03
+[*] Errore Relativo Massimo : 1.530211e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 4. OpenMP Opt ---
+[*] Allocazione memoria per matrice 4096x4096
+[*] Lettura del file data/matrix_4096.txt
+[*] Valore in basso a destra matrix[4095][4095] = -0.708355
+
+[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.197638 secondi
+[*] Tempo Algoritmo QR   : 663.738423 secondi
+[*] TEMPO TOTALE         : 663.936061 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 1345.843156
+    2: 63.272525
+    3: 63.378508
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.055765e-03
+[*] Errore Relativo Massimo : 1.530211e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 5. OpenMP Opt Blocked ---
+[*] Allocazione memoria per matrice 4096x4096
+[*] Lettura del file data/matrix_4096.txt
+[*] Valore in basso a destra matrix[4095][4095] = -0.708355
+
+[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)
+[*] Metodo delle potenze convergente in 4 iterazioni.
+
+======================================================
+[*] Tempo Metodo Potenze : 0.201454 secondi
+[*] Tempo Algoritmo QR   : 564.208689 secondi
+[*] TEMPO TOTALE         : 564.410143 secondi
+======================================================
+
+[*] Primi 3 valori singolari trovati:
+    1: 1345.843156
+    2: 63.272525
+    3: 63.378508
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.055765e-03
+[*] Errore Relativo Massimo : 1.530211e-02
+======================================================
+
+[*] Esecuzione completata con successo.
+
+--- 6. MPI (Ibrido MPI + OpenMP) ---
+
+======================================================
+[*] INIZIO ESECUZIONE DISTRIBUITA (MPI + OpenMP)
+[*] Nodi MPI: 4 | Matrice: 4096x4096
+[*] Rank 0: Lettura del file data/matrix_4096.txt...
+
+[*] Esecuzione Metodo delle Potenze (Distribuito)...
+[*] Metodo delle potenze convergente in 4 iterazioni.
+[*] Autovalore dominante trovato: 1345.843156
+
+[*] Esecuzione Algoritmo QR Iterativo (Ibrido)...
+
+======================================================
+[*] Tempo Metodo Potenze (MPI) : 0.216425 secondi
+[*] Tempo Algoritmo QR         : 692.095100 secondi
+[*] TEMPO TOTALE (MPI+OpenMP)  : 692.311525 secondi
+======================================================
+[*] Primi 3 valori singolari trovati:
+    1: 1345.843156
+    2: 63.272525
+    3: 63.378508
+
+======================================================
+[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)
+[*] Errore Relativo Medio   : 1.055765e-03
+[*] Errore Relativo Massimo : 1.530211e-02
+======================================================
+
+==========================================
+ BENCHMARK CONCLUSO. Risultati salvati in benchmark_mac_results.log
+==========================================

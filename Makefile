@@ -2,7 +2,7 @@ CC = gcc-15
 MPICC = mpicc
 CFLAGS = -Wall -O3 -march=native -ffast-math
 LDFLAGS = -lm
-# Percorsi specifici per Homebrew su macOS Apple Silicon
+
 OMP_FLAGS = -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include
 OMP_LIBS = -L/opt/homebrew/opt/libomp/lib -lomp
 

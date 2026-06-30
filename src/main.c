@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <sys/time.h> // Per gettimeofday
+#include <sys/time.h>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -12,13 +12,11 @@
 #include "methods.h"
 #include "verifier.h"
 
-// Funzione universale per il tempo reale (Wall-clock time)
+// funzione per il tempo reale (Wall-clock time)
 double get_current_time() {
 #ifdef _OPENMP
-    // Se OpenMP è attivo, usa il timer ad altissima precisione nativo
     return omp_get_wtime();
 #else
-    // Fallback POSIX per la versione puramente sequenziale
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (double)tv.tv_sec + (double)tv.tv_usec / 1000000.0;
@@ -80,12 +78,11 @@ int main(int argc, char *argv[]) {
     int qr_max_iterations = 30;
     double dominant_eigenvalue = 0.0;
 
-    // Variabili per i tempi (sostituito clock_t con double)
     double start_pm, end_pm, start_qr, end_qr;
 
     // --- TEST ---
     if (strcmp(mode, "naive") == 0) {
-        printf("\n[*] Modalita': NAIVE (Array 2D, Stride elevato)\n");
+        printf("\n[*] Modalita': NAIVE\n");
 
         double **matrix_2d = allocate_matrix_2d_main(N);
         for(int i = 0; i < N; i++) {
@@ -104,7 +101,6 @@ int main(int argc, char *argv[]) {
         qr_algorithm_naive(matrix_2d, N, qr_max_iterations, singular_values);        
         end_qr = get_current_time();
 
-        // Semplice sottrazione, niente CLOCKS_PER_SEC
         double time_pm = end_pm - start_pm;
         double time_qr = end_qr - start_qr;
 
@@ -117,7 +113,7 @@ int main(int argc, char *argv[]) {
         free_matrix_2d_main(matrix_2d, N);
 
     } else if (strcmp(mode, "opt") == 0) {
-        printf("\n[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)\n");
+        printf("\n[*] Modalita': OPTIMIZED\n");
 
         // --- METODO DELLE POTENZE ---
         start_pm = get_current_time();
@@ -139,7 +135,7 @@ int main(int argc, char *argv[]) {
         printf("======================================================\n\n");
 
     } else if (strcmp(mode, "blocked") == 0) {
-        printf("\n[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)\n");
+        printf("\n[*] Modalita': OPTIMIZED con elaborazione a blocchi\n");
 
         // --- METODO DELLE POTENZE ---
         start_pm = get_current_time();

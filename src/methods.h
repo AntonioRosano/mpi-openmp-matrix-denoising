@@ -18,7 +18,7 @@ void qr_decomposition_blocked(const double* restrict A, double* restrict Q, doub
 void qr_algorithm_blocked(const double* restrict A, int N, int max_iter, double* restrict singular_values);
 double power_method_blocked(const double* restrict A, int N, int max_iter, double tol, double* restrict eigenvector);
 
-// MPI (Ibrido)
+// MPI+OpenMP (Ibrido)
 double power_method_mpi(const double* restrict A, int N, int max_iter, double tol, double* restrict eigenvector);
 void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* restrict singular_values);
 

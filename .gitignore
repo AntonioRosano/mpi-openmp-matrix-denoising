@@ -54,11 +54,10 @@ dkms.conf
 # debug information files
 *.dwo
 
-data/
 *.trace
 obj/
 *.log
-denoising
+!benchmark_mac_results.log
 
 # Ambienti virtuali Python
 venv/
@@ -74,3 +73,11 @@ __pycache__/
 # File temporanei del sistema operativo
 .DS_Store
 Thumbs.db
+
+#eseguibili
+denoising
+denoising_mpi
+denoising_omp
+denoising_serial
+
+*.txt

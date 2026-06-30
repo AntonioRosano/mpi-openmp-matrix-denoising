@@ -38,19 +38,19 @@ void qr_decomposition_naive(double** A, double** Q, double** R, int N) {
 
     for (int i = 0; i < N; i++) {
         
-        // Calcolo della norma (Stride N)
+        // calcolo della norma (Stride N)
         for(int k = 0; k < N; k++){
             // scrittura diretta in memoria ad ogni iterazione (niente accumulatore locale)
             R[i][i] = R[i][i] + (Q[k][i] * Q[k][i]);
         }        
         R[i][i] = sqrt(R[i][i]);
 
-        // Normalizzazione: divisione lenta ripetuta N volte
+        // normalizzazione: divisione lenta ripetuta N volte
         for(int k = 0; k < N; k++){
             Q[k][i] = Q[k][i] / R[i][i];
         }
 
-        // Ortogonalizzazione
+        // ortogonalizzazione
         for (int j = i + 1; j < N; j++) {
             
             // prodotto scalare con stride elevato
@@ -141,7 +141,7 @@ double power_method_naive(double** A, int N, int max_iter, double tol, double* e
     for(int k = 0; k < max_iter; k++){
         lambda_old = lambda_new;
 
-        // Step 1: temp = A * eigenvector
+        // 1: temp = A * eigenvector
         for(int i = 0; i < N; i++){
             temp[i] = 0.0;
             for(int j = 0; j < N; j++){
@@ -149,11 +149,11 @@ double power_method_naive(double** A, int N, int max_iter, double tol, double* e
             }
         }
 
-        // Step 2: w = A^T * temp
+        // 2: w = A^T * temp
         for(int i = 0; i < N; i++){
             w[i] = 0.0;
             for(int j = 0; j < N; j++){
-                // Accesso per colonna (A[j][i]) -> Altissima probabilità di cache miss
+                // Accesso per colonna (A[j][i]) -> alta probabilità di cache miss
                 w[i] = w[i] + (A[j][i] * temp[j]);
             }
         }

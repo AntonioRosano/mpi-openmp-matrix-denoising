@@ -4,7 +4,7 @@
 #include <string.h>
 #include "methods.h"
 
-// dimensioni del blocco (64x64 double = 32KB, perfetto per cache L1)
+// dimensioni del blocco (64x64 double = 32KB, ottimo per cache L1)
 #define BLOCK_SIZE 64
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -32,9 +32,9 @@ void qr_algorithm_blocked(const double* restrict A, int N, int max_iter, double*
     for(int i = 0; i < N * N; i++) M[i] = 0.0;      
 
 
-    // calcolo di M = A^T * A con CACHE BLOCKING
+    // calcolo di M = A^T * A
     // Parallelizziamo sui blocchi esterni: 'i0' garantisce che ogni thread
-    // gestisca un gruppo di righe indipendente -> Niente Data Race!
+    // gestisca un gruppo di righe indipendente
     #pragma omp parallel for schedule(dynamic)
     for(int i0 = 0; i0 < N; i0 += BLOCK_SIZE){
         for(int j0 = 0; j0 < N; j0 += BLOCK_SIZE){
@@ -60,7 +60,7 @@ void qr_algorithm_blocked(const double* restrict A, int N, int max_iter, double*
         #pragma omp parallel for
         for(int i = 0; i < N * N; i++) temp[i] = 0.0;
 
-        // Calcolo temp = R * Q con CACHE BLOCKING
+        // calcolo temp = R * Q
         #pragma omp parallel for schedule(dynamic)
         for(int i0 = 0; i0 < N; i0 += BLOCK_SIZE){
             for(int k0 = 0; k0 < N; k0 += BLOCK_SIZE){

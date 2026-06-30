@@ -41,7 +41,7 @@ void verify_correctness(int N, double* my_singular_values) {
     fclose(file);
 
     printf("\n======================================================\n");
-    printf("[*] VERIFICA CORRETTEZZA (LAPACK Ground-Truth)\n");
+    printf("[*] VERIFICA CORRETTEZZA (LAPACK SVD Ground-Truth)\n");
     printf("[*] Errore Relativo Medio   : %e\n", avg_relative_error);
     printf("[*] Errore Relativo Massimo : %e\n", max_relative_error);
     printf("======================================================\n");

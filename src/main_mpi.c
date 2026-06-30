@@ -10,7 +10,7 @@
 int main(int argc, char *argv[]) {
     int rank, size;
     
-    // Inizializzazione Ambiente MPI
+    // inizializzazione ambiente MPI
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -33,11 +33,10 @@ int main(int argc, char *argv[]) {
     double *matrix_1d = NULL;
     double *singular_values = NULL;
     
-    // TUTTI i processi devono allocare l'autovettore, perché tutti 
-    // ricevono i dati con MPI_Bcast e partecipano al calcolo!
+    // tutti i processi devono allocare l'autovettore, perché tutti ricevono i dati con MPI_Bcast
     double *eigenvector = (double*)malloc(N * sizeof(double));
 
-    // Solo il "Nodo master" legge il file e alloca le matrici pesanti
+    // solo il master legge il file e alloca le matrici pesanti
     if (rank == 0) {
         matrix_1d = (double*)malloc(N * N * sizeof(double));
         singular_values = (double*)malloc(N * sizeof(double));
@@ -54,18 +53,16 @@ int main(int argc, char *argv[]) {
         read_matrix(filename, matrix_1d, N);
     }
 
-    // ==============================================================
-    // 1. METODO DELLE POTENZE (Distribuito via MPI)
-    // ==============================================================
-    if (rank == 0) printf("\n[*] Esecuzione Metodo delle Potenze (Distribuito)...\n");
+    // METODO DELLE POTENZE
+    if (rank == 0) printf("\n[*] Esecuzione Metodo delle Potenze...\n");
     
-    // Barriera: allineiamo tutti i nodi prima di far partire il timer
+    // allineiamo tutti i nodi prima di far partire il timer
     MPI_Barrier(MPI_COMM_WORLD);
     double start_pm = MPI_Wtime();
     
     double dominant_eigenvalue = power_method_mpi(matrix_1d, N, 1000, 1e-6, eigenvector);
     
-    // Barriera: aspettiamo che tutti abbiano finito per fermare il timer
+    // aspettiamo che tutti abbiano finito per fermare il timer
     MPI_Barrier(MPI_COMM_WORLD);
     double end_pm = MPI_Wtime();
 
@@ -76,7 +73,7 @@ int main(int argc, char *argv[]) {
     // ==============================================================
     // 2. ALGORITMO QR ITERATIVO (Ibrido / Master-Only)
     // ==============================================================
-    if (rank == 0) printf("\n[*] Esecuzione Algoritmo QR Iterativo (Ibrido)...\n");
+    if (rank == 0) printf("\n[*] Esecuzione Algoritmo QR Iterativo...\n");
     
     MPI_Barrier(MPI_COMM_WORLD);
     double start_qr = MPI_Wtime();
@@ -87,15 +84,13 @@ int main(int argc, char *argv[]) {
     double end_qr = MPI_Wtime();
 
 
-    // ==============================================================
     // STAMPA DEI RISULTATI
-    // ==============================================================
     if (rank == 0) {
         double time_pm = end_pm - start_pm;
         double time_qr = end_qr - start_qr;
 
         printf("\n======================================================\n");
-        printf("[*] Tempo Metodo Potenze (MPI) : %f secondi\n", time_pm);
+        printf("[*] Tempo Metodo Potenze: %f secondi\n", time_pm);
         printf("[*] Tempo Algoritmo QR         : %f secondi\n", time_qr);
         printf("[*] TEMPO TOTALE (MPI+OpenMP)  : %f secondi\n", time_pm + time_qr);
         printf("======================================================\n");

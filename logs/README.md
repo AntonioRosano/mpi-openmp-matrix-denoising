@@ -1,0 +1,1 @@
+# Questa directory contiene i log generati dalla simulazione

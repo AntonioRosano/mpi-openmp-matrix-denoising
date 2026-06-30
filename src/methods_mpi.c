@@ -8,9 +8,8 @@
 #define BLOCK_SIZE 64
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
-// =====================================================================
-// METODO DELLE POTENZE (Totalmente Indipendente e Ibrido MPI+OMP)
-// =====================================================================
+
+// METODO DELLE POTENZE
 double power_method_mpi(const double* restrict A, int N, int max_iter, double tol, double* restrict eigenvector) {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -19,7 +18,7 @@ double power_method_mpi(const double* restrict A, int N, int max_iter, double to
     int local_N = N / size;
     double *A_local = (double*)malloc(local_N * N * sizeof(double));
     
-    // Il master (Rank 0) distribuisce le fette orizzontali di A a tutti i nodi
+    // Il master (Rank 0) distribuisce le righe di A a tutti i nodi
     MPI_Scatter(A, local_N * N, MPI_DOUBLE, A_local, local_N * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     double *temp_local = (double*)malloc(local_N * sizeof(double));
@@ -45,7 +44,7 @@ double power_method_mpi(const double* restrict A, int N, int max_iter, double to
     for(int iter = 0; iter < max_iter; iter++){      
         lambda_old = lambda_new;
 
-        // 1. Ogni nodo calcola temp_local = A_local * v (solo sulla sua fetta)
+        // ogni nodo calcola temp_local = A_local * v
         #pragma omp parallel for
         for(int i = 0; i < local_N; i++){
             double sum = 0.0; 
@@ -55,8 +54,6 @@ double power_method_mpi(const double* restrict A, int N, int max_iter, double to
             temp_local[i] = sum;
         }
 
-        // 2. MAGIA ALGEBRICA: w_partial = A_local^T * temp_local
-        // Invece di condividere i dati in rete, ogni nodo calcola un pezzo della somma finale!
         #pragma omp parallel for
         for(int i = 0; i < N; i++){
             double sum = 0.0;
@@ -66,7 +63,7 @@ double power_method_mpi(const double* restrict A, int N, int max_iter, double to
             w_partial[i] = sum;
         }
 
-        // 3. La rete somma i w_partial di tutti e restituisce il w_full completo a tutti
+        // la rete somma i w_partial di tutti e restituisce il w_full completo a tutti
         MPI_Allreduce(w_partial, w_full, N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
         lambda_new = 0.0;
@@ -89,9 +86,8 @@ double power_method_mpi(const double* restrict A, int N, int max_iter, double to
     return sqrt(lambda_new);
 }
 
-// =====================================================================
-// ALGORITMO QR (Totalmente Indipendente e Ibrido MPI+OMP)
-// =====================================================================
+
+// ALGORITMO QR
 void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* restrict singular_values) {
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -100,7 +96,6 @@ void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* res
     int local_N = N / size;
     double *A_local = (double*)malloc(local_N * N * sizeof(double));
     
-    // Il master taglia A e la distribuisce
     MPI_Scatter(A, local_N * N, MPI_DOUBLE, A_local, local_N * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
     double *M_local = (double*)malloc(N * N * sizeof(double));
@@ -109,7 +104,7 @@ void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* res
     #pragma omp parallel for
     for(int i = 0; i < N * N; i++) M_local[i] = 0.0;
 
-    // Ogni nodo calcola il SUO pezzo di matrice M usando Tiling a Blocchi L1
+    // Ogni nodo calcola il SUO pezzo di matrice M usando Tiling a Blocchi
     #pragma omp parallel for schedule(dynamic)
     for(int i0 = 0; i0 < N; i0 += BLOCK_SIZE){
         for(int j0 = 0; j0 < N; j0 += BLOCK_SIZE){
@@ -126,7 +121,7 @@ void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* res
         }
     }
 
-    // Fusione via Rete: sommiamo le matrici parziali per avere la M_full (su tutti i nodi)
+
     MPI_Allreduce(M_local, M_full, N * N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     // Essendo il QR sequenziale, lasciamo riposare gli slave e facciamo calcolare solo il Master
@@ -136,7 +131,7 @@ void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* res
         double *temp = (double*)malloc(N * N * sizeof(double));
 
         for (int iter = 0; iter < max_iter; iter++) {
-            qr_decomposition_opt(M_full, Q, R, N); // Usa la funzione che hai in methods_opt.c
+            qr_decomposition_opt(M_full, Q, R, N);
             
             #pragma omp parallel for
             for(int i = 0; i < N * N; i++) temp[i] = 0.0;
