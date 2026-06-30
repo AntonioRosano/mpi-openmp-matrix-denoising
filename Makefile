@@ -1,51 +1,25 @@
-# Variabili - Assicurati di usare il compilatore brew (es. gcc-15 se è quello che hai)
-#CC = gcc-15		#versione per mac
-CC = gcc			#versione per cluster
+CC = gcc-15
+MPICC = mpicc
+CFLAGS = -Wall -O3 -march=native -ffast-math
+LDFLAGS = -lm
+# Percorsi specifici per Homebrew su macOS Apple Silicon
+OMP_FLAGS = -Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include
+OMP_LIBS = -L/opt/homebrew/opt/libomp/lib -lomp
 
-# Flag base (Ottimizzazioni, Vettorizzazione automatica, Fast Math)
-CFLAGS_BASE = -Wall -O3 -g -march=native -ffast-math
-LDFLAGS_BASE = -lm
+ALL_SRC = src/main.c src/io_utils.c src/verifier.c src/methods_naive.c src/methods_opt.c src/methods_blocked.c
 
-# Flag specifici per attivare OpenMP
-CFLAGS_OMP = $(CFLAGS_BASE) -fopenmp
-LDFLAGS_OMP = $(LDFLAGS_BASE) -fopenmp
+all: denoising_serial denoising_omp denoising_mpi
 
-SRC_DIR = src
-OBJ_DIR = obj
+denoising_serial:
+	$(CC) $(CFLAGS) -o denoising_serial $(ALL_SRC) $(LDFLAGS)
 
-# Trova tutti i sorgenti
-SOURCES = $(wildcard $(SRC_DIR)/*.c)
+denoising_omp:
+	$(CC) $(CFLAGS) $(OMP_FLAGS) -o denoising_omp $(ALL_SRC) $(LDFLAGS) $(OMP_LIBS)
 
-# Crea due liste di file oggetto separati per non sovrascriverli
-OBJ_SERIAL = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%_serial.o, $(SOURCES))
-OBJ_OMP = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%_omp.o, $(SOURCES))
+denoising_mpi:
+	$(MPICC) $(CFLAGS) $(OMP_FLAGS) -o denoising_mpi src/main_mpi.c src/methods_mpi.c src/methods_opt.c src/io_utils.c src/verifier.c $(LDFLAGS) $(OMP_LIBS)
 
-EXEC_SERIAL = denoising_serial
-EXEC_OMP = denoising_omp
-
-# Regola principale: compila entrambi gli eseguibili
-all: $(EXEC_SERIAL) $(EXEC_OMP)
-
-# --- REGOLE PER LA VERSIONE SERIALE PURA ---
-$(EXEC_SERIAL): $(OBJ_SERIAL)
-	$(CC) $(CFLAGS_BASE) -o $@ $^ $(LDFLAGS_BASE)
-
-$(OBJ_DIR)/%_serial.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS_BASE) -c $< -o $@
-
-# --- REGOLE PER LA VERSIONE OPENMP ---
-$(EXEC_OMP): $(OBJ_OMP)
-	$(CC) $(CFLAGS_OMP) -o $@ $^ $(LDFLAGS_OMP)
-
-$(OBJ_DIR)/%_omp.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS_OMP) -c $< -o $@
-
-# Creazione cartella obj
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
-
-# Pulizia
 clean:
-	rm -rf $(OBJ_DIR) $(EXEC_SERIAL) $(EXEC_OMP)
+	rm -f denoising_serial denoising_omp denoising_mpi
 
 .PHONY: all clean

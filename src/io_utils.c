@@ -2,21 +2,15 @@
 #include <stdlib.h>
 #include "io_utils.h"
 
-
-
 // funzione per leggere la matrice dal file generato da Python
 void read_matrix(const char* filename, double* matrix, int N) {
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "Errore: impossibile aprire il file %s\n", filename);
-        exit(EXIT_FAILURE);
-    }
+    FILE* file = fopen(filename, "r"); // Modalità testo
+    if (file == NULL) { perror("Errore apertura"); exit(1); }
 
-    // leggiamo N*N elementi
     for (int i = 0; i < N * N; i++) {
         if (fscanf(file, "%lf", &matrix[i]) != 1) {
-            fprintf(stderr, "Errore durante la lettura dei dati al valore %d\n", i);
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "Errore lettura elemento %d\n", i);
+            exit(1);
         }
     }
     fclose(file);

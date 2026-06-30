@@ -2,10 +2,28 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <time.h>
+#include <sys/time.h> // Per gettimeofday
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include "io_utils.h"
 #include "methods.h"
+#include "verifier.h"
+
+// Funzione universale per il tempo reale (Wall-clock time)
+double get_current_time() {
+#ifdef _OPENMP
+    // Se OpenMP è attivo, usa il timer ad altissima precisione nativo
+    return omp_get_wtime();
+#else
+    // Fallback POSIX per la versione puramente sequenziale
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (double)tv.tv_sec + (double)tv.tv_usec / 1000000.0;
+#endif
+}
 
 
 double** allocate_matrix_2d_main(int N) {
@@ -25,7 +43,7 @@ void free_matrix_2d_main(double **mat, int N) {
 
 int main(int argc, char *argv[]) {
     if (argc != 4) {
-        printf("Uso: %s <dimensione_N> <file_matrice> [naive | opt]\n", argv[0]);
+        printf("Uso: %s <dimensione_N> <file_matrice> [naive | opt | blocked]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -62,9 +80,8 @@ int main(int argc, char *argv[]) {
     int qr_max_iterations = 30;
     double dominant_eigenvalue = 0.0;
 
-    // variabili per il cronometro
-    clock_t start, end;
-    double cpu_time_used;
+    // Variabili per i tempi (sostituito clock_t con double)
+    double start_pm, end_pm, start_qr, end_qr;
 
     // --- TEST ---
     if (strcmp(mode, "naive") == 0) {
@@ -77,59 +94,78 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        start = clock();
+        // --- METODO DELLE POTENZE ---
+        start_pm = get_current_time();
+        dominant_eigenvalue = power_method_naive(matrix_2d, N, max_iterations_pm, tolerance, eigenvector);        
+        end_pm = get_current_time();
 
-        printf("[*] Esecuzione Metodo delle Potenze...\n");
-        dominant_eigenvalue = power_method_naive(matrix_2d, N, max_iterations_pm, tolerance, eigenvector);
-        printf("[*] Autovalore dominante trovato: %f\n", dominant_eigenvalue);
+        // --- ALGORITMO QR ---
+        start_qr = get_current_time();
+        qr_algorithm_naive(matrix_2d, N, qr_max_iterations, singular_values);        
+        end_qr = get_current_time();
 
-        printf("\n[*] Esecuzione Algoritmo QR Iterativo...\n");
-        qr_algorithm_naive(matrix_2d, N, qr_max_iterations, singular_values);
+        // Semplice sottrazione, niente CLOCKS_PER_SEC
+        double time_pm = end_pm - start_pm;
+        double time_qr = end_qr - start_qr;
 
-        end = clock();
+        printf("\n======================================================\n");
+        printf("[*] Tempo Metodo Potenze : %f secondi\n", time_pm);
+        printf("[*] Tempo Algoritmo QR   : %f secondi\n", time_qr);
+        printf("[*] TEMPO TOTALE         : %f secondi\n", time_pm + time_qr);
+        printf("======================================================\n\n");
 
         free_matrix_2d_main(matrix_2d, N);
 
     } else if (strcmp(mode, "opt") == 0) {
         printf("\n[*] Modalita': OPTIMIZED (Array 1D, Loop Swapping, SIMD)\n");
 
-        start = clock();
-
-        printf("[*] Esecuzione Metodo delle Potenze...\n");
+        // --- METODO DELLE POTENZE ---
+        start_pm = get_current_time();
         dominant_eigenvalue = power_method_opt(matrix_1d, N, max_iterations_pm, tolerance, eigenvector);
-        printf("[*] Autovalore dominante trovato: %f\n", dominant_eigenvalue);
+        end_pm = get_current_time();
 
-        printf("\n[*] Esecuzione Algoritmo QR Iterativo...\n");
+        // --- ALGORITMO QR ---
+        start_qr = get_current_time();
         qr_algorithm_opt(matrix_1d, N, qr_max_iterations, singular_values);
+        end_qr = get_current_time();
 
-        end = clock();
+        double time_pm = end_pm - start_pm;
+        double time_qr = end_qr - start_qr;
 
-    } else if (strcmp(argv[3], "blocked") == 0) {
+        printf("\n======================================================\n");
+        printf("[*] Tempo Metodo Potenze : %f secondi\n", time_pm);
+        printf("[*] Tempo Algoritmo QR   : %f secondi\n", time_qr);
+        printf("[*] TEMPO TOTALE         : %f secondi\n", time_pm + time_qr);
+        printf("======================================================\n\n");
+
+    } else if (strcmp(mode, "blocked") == 0) {
         printf("\n[*] Modalita': OPTIMIZED con blocchi (Array 1D, Loop Swapping, SIMD, elaborazione a blocchi)\n");
 
-        start = clock();
-
-        printf("[*] Esecuzione Metodo delle Potenze...\n");
+        // --- METODO DELLE POTENZE ---
+        start_pm = get_current_time();
         dominant_eigenvalue = power_method_blocked(matrix_1d, N, max_iterations_pm, tolerance, eigenvector);
-        printf("[*] Autovalore dominante trovato: %f\n", dominant_eigenvalue);
+        end_pm = get_current_time();
 
-        printf("\n[*] Esecuzione Algoritmo QR Iterativo...\n");
+        // --- ALGORITMO QR ---
+        start_qr = get_current_time();
         qr_algorithm_blocked(matrix_1d, N, qr_max_iterations, singular_values);
+        end_qr = get_current_time();
 
-        end = clock();
+        double time_pm = end_pm - start_pm;
+        double time_qr = end_qr - start_qr;
+
+        printf("\n======================================================\n");
+        printf("[*] Tempo Metodo Potenze : %f secondi\n", time_pm);
+        printf("[*] Tempo Algoritmo QR   : %f secondi\n", time_qr);
+        printf("[*] TEMPO TOTALE         : %f secondi\n", time_pm + time_qr);
+        printf("======================================================\n\n");
     } else {
-        printf("Errore: Argomento '%s' non valido. Usa 'naive' o 'opt'.\n", mode);
+        printf("Errore: Argomento '%s' non valido. Usa 'naive', 'opt' o 'blocked'.\n", mode);
         free(matrix_1d);
         free(eigenvector);
         free(singular_values);
         return EXIT_FAILURE;
     }
-
-    // risultati
-    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-    printf("\n======================================================\n");
-    printf("[*] Tempo di calcolo netto (%s): %f secondi\n", mode, cpu_time_used);
-    printf("======================================================\n\n");
 
     // stampiamo solo i primi 3 valori singolari
     printf("[*] Primi 3 valori singolari trovati:\n");
@@ -137,6 +173,8 @@ int main(int argc, char *argv[]) {
         printf("    %d: %f\n", i+1, singular_values[i]);
     }
 
+    verify_correctness(N, singular_values);
+    
     free(matrix_1d);
     free(eigenvector);
     free(singular_values);
