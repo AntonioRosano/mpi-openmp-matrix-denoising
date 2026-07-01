@@ -1,163 +1,273 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#ifdef _OPENMP
 #include <omp.h>
+#endif
+
 #include "methods.h"
 
-#define BLOCK_SIZE 64
-#define MIN(a,b) (((a)<(b))?(a):(b))
+// =====================================================================
+// METODO DELLE POTENZE IBRIDO
+// =====================================================================
+double power_method_hybrid(const double *restrict local_A, int N, int local_N,
+                           int max_iter, double tol,
+                           double *restrict eigenvector, int rank, int size) {
 
+  double *w = (double *)malloc(N * sizeof(double));
+  double *local_w = (double *)malloc(N * sizeof(double));
+  double *local_temp = (double *)malloc(local_N * sizeof(double));
+  double *temp = (double *)malloc(N * sizeof(double));
 
-// METODO DELLE POTENZE
-double power_method_mpi(const double* restrict A, int N, int max_iter, double tol, double* restrict eigenvector) {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-
-    int local_N = N / size;
-    double *A_local = (double*)malloc(local_N * N * sizeof(double));
-    
-    // Il master (Rank 0) distribuisce le righe di A a tutti i nodi
-    MPI_Scatter(A, local_N * N, MPI_DOUBLE, A_local, local_N * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-
-    double *temp_local = (double*)malloc(local_N * sizeof(double));
-    double *w_partial = (double*)malloc(N * sizeof(double));
-    double *w_full = (double*)malloc(N * sizeof(double));
-
-    // Il Master inizializza il vettore e lo invia a tutti (Bcast)
-    if (rank == 0) {
-        double norm_sq = 0.0;
-        for(int i = 0; i < N; i++){     
-            double val = rand();
-            eigenvector[i] = val; 
-            norm_sq += val * val;
-        }
-        double inv_norm = 1.0 / sqrt(norm_sq); 
-        for(int i = 0; i < N; i++) eigenvector[i] *= inv_norm;
+  if (rank == 0) {
+    double norm_sq = 0.0;
+    for (int i = 0; i < N; i++) {
+      eigenvector[i] = (double)rand() / RAND_MAX;
+      norm_sq += eigenvector[i] * eigenvector[i];
     }
-    MPI_Bcast(eigenvector, N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    double inv_norm = 1.0 / sqrt(norm_sq);
+    for (int i = 0; i < N; i++)
+      eigenvector[i] *= inv_norm;
+  }
 
-    double lambda_old = 0.0;
-    double lambda_new = 0.0;
+  MPI_Bcast(eigenvector, N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-    for(int iter = 0; iter < max_iter; iter++){      
-        lambda_old = lambda_new;
+  double lambda_old = 0.0;
+  double lambda_new = 0.0;
 
-        // ogni nodo calcola temp_local = A_local * v
-        #pragma omp parallel for
-        for(int i = 0; i < local_N; i++){
-            double sum = 0.0; 
-            for(int j = 0; j < N; j++){
-                sum += A_local[i * N + j] * eigenvector[j];
-            }
-            temp_local[i] = sum;
-        }
+  for (int k = 0; k < max_iter; k++) {
+    lambda_old = lambda_new;
 
-        #pragma omp parallel for
-        for(int i = 0; i < N; i++){
-            double sum = 0.0;
-            for(int j = 0; j < local_N; j++){
-                sum += A_local[j * N + i] * temp_local[j]; 
-            }
-            w_partial[i] = sum;
-        }
-
-        // la rete somma i w_partial di tutti e restituisce il w_full completo a tutti
-        MPI_Allreduce(w_partial, w_full, N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-        lambda_new = 0.0;
-        double norm_w_sq = 0.0;
-        for(int i = 0; i < N; i++){
-            lambda_new += eigenvector[i] * w_full[i];
-            norm_w_sq += w_full[i] * w_full[i];
-        }
-
-        if (iter > 0 && fabs(lambda_new - lambda_old) < tol) {
-            if (rank == 0) printf("[*] Metodo delle potenze convergente in %d iterazioni.\n", iter);
-            break;      
-        }
-
-        double inv_norm_w = 1.0 / sqrt(norm_w_sq); 
-        for(int i = 0; i < N; i++) eigenvector[i] = w_full[i] * inv_norm_w;
+// FASE 1: OpenMP Locale (temp = A * eigenvector)
+#pragma omp parallel for
+    for (int i = 0; i < local_N; i++) {
+      double sum = 0.0;
+      for (int j = 0; j < N; j++)
+        sum += local_A[i * N + j] * eigenvector[j];
+      local_temp[i] = sum;
     }
 
-    free(A_local); free(temp_local); free(w_partial); free(w_full);
-    return sqrt(lambda_new);
+    MPI_Allgather(local_temp, local_N, MPI_DOUBLE, temp, local_N, MPI_DOUBLE,
+                  MPI_COMM_WORLD);
+
+// FASE 3: OpenMP Locale (local_w = A^T * temp)
+#pragma omp parallel for
+    for (int i = 0; i < N; i++) {
+      double sum = 0.0;
+      for (int j = 0; j < local_N; j++) {
+        sum += local_A[j * N + i] * temp[rank * local_N + j];
+      }
+      local_w[i] = sum;
+    }
+
+    // FASE 4: MPI Globale (Riduzione w)
+    MPI_Allreduce(local_w, w, N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    // FASE 5: Aggiornamento
+    lambda_new = 0.0;
+    for (int i = 0; i < N; i++)
+      lambda_new += eigenvector[i] * w[i];
+
+    if (k > 0 && fabs(lambda_new - lambda_old) < tol) {
+      if (rank == 0)
+        printf("[*] Metodo delle potenze convergente in %d iterazioni.\n", k);
+      break;
+    }
+
+    double norm_w_sq = 0.0;
+    for (int i = 0; i < N; i++)
+      norm_w_sq += w[i] * w[i];
+
+    double inv_norm_w = 1.0 / sqrt(norm_w_sq);
+    for (int i = 0; i < N; i++)
+      eigenvector[i] = w[i] * inv_norm_w;
+  }
+
+  free(w);
+  free(local_w);
+  free(local_temp);
+  free(temp);
+  return sqrt(lambda_new);
 }
 
+// =====================================================================
+// DECOMPOSIZIONE QR IBRIDA (Gram-Schmidt)
+// =====================================================================
+void qr_decomposition_hybrid(const double *restrict local_A,
+                             double *restrict local_Q,
+                             double *restrict global_R, int N, int local_N,
+                             int rank) {
 
-// ALGORITMO QR
-void qr_algorithm_mpi(const double* restrict A, int N, int max_iter, double* restrict singular_values) {
-    int rank, size;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+  // Matrice trasposta locale: colonne diventano righe per favorire la cache
+  // (Touch-by-all alloc)
+  double *local_Q_T = (double *)malloc(N * local_N * sizeof(double));
 
-    int local_N = N / size;
-    double *A_local = (double*)malloc(local_N * N * sizeof(double));
-    
-    MPI_Scatter(A, local_N * N, MPI_DOUBLE, A_local, local_N * N, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+#pragma omp parallel for
+  for (int i = 0; i < N * N; i++)
+    global_R[i] = 0.0;
 
-    double *M_local = (double*)malloc(N * N * sizeof(double));
-    double *M_full = (double*)malloc(N * N * sizeof(double));
+// TRASPOSIZIONE LOCALE PREVENTIVA
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < local_N; i++) {
+    for (int j = 0; j < N; j++) {
+      local_Q_T[j * local_N + i] = local_A[i * N + j];
+    }
+  }
 
-    #pragma omp parallel for
-    for(int i = 0; i < N * N; i++) M_local[i] = 0.0;
-
-    // Ogni nodo calcola il SUO pezzo di matrice M usando Tiling a Blocchi
-    #pragma omp parallel for schedule(dynamic)
-    for(int i0 = 0; i0 < N; i0 += BLOCK_SIZE){
-        for(int j0 = 0; j0 < N; j0 += BLOCK_SIZE){
-            for(int k0 = 0; k0 < local_N; k0 += BLOCK_SIZE){
-                for(int i = i0; i < MIN(i0 + BLOCK_SIZE, N); i++){
-                    for(int k = k0; k < MIN(k0 + BLOCK_SIZE, local_N); k++){
-                        double A_ki = A_local[k * N + i]; 
-                        for(int j = j0; j < MIN(j0 + BLOCK_SIZE, N); j++){
-                            M_local[i * N + j] += A_ki * A_local[k * N + j]; 
-                        }
-                    }
-                }
-            }
-        }
+  for (int i = 0; i < N; i++) {
+    // 1. Calcolo Norma Parziale (Locale - OpenMP)
+    double local_norm_sq = 0.0;
+#pragma omp parallel for reduction(+ : local_norm_sq)
+    for (int k = 0; k < local_N; k++) {
+      local_norm_sq += local_Q_T[i * local_N + k] * local_Q_T[i * local_N + k];
     }
 
+    // 2. Sincronizzazione Norma (Globale - MPI)
+    double global_norm_sq = 0.0;
+    MPI_Allreduce(&local_norm_sq, &global_norm_sq, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
 
-    MPI_Allreduce(M_local, M_full, N * N, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    double R_ii = sqrt(global_norm_sq);
+    global_R[i * N + i] = R_ii;
 
-    // Essendo il QR sequenziale, lasciamo riposare gli slave e facciamo calcolare solo il Master
-    if (rank == 0) {
-        double *Q = (double*)malloc(N * N * sizeof(double));
-        double *R = (double*)malloc(N * N * sizeof(double));
-        double *temp = (double*)malloc(N * N * sizeof(double));
-
-        for (int iter = 0; iter < max_iter; iter++) {
-            qr_decomposition_opt(M_full, Q, R, N);
-            
-            #pragma omp parallel for
-            for(int i = 0; i < N * N; i++) temp[i] = 0.0;
-
-            // R * Q a blocchi
-            #pragma omp parallel for schedule(dynamic)
-            for(int i0 = 0; i0 < N; i0 += BLOCK_SIZE){
-                for(int k0 = 0; k0 < N; k0 += BLOCK_SIZE){
-                    for(int j0 = 0; j0 < N; j0 += BLOCK_SIZE){
-                        for(int i = i0; i < MIN(i0 + BLOCK_SIZE, N); i++){
-                            for(int k = k0; k < MIN(k0 + BLOCK_SIZE, N); k++){
-                                double R_ik = R[i * N + k];
-                                for(int j = j0; j < MIN(j0 + BLOCK_SIZE, N); j++){
-                                    temp[i * N + j] += R_ik * Q[k * N + j];
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            double *swap_ptr = M_full; M_full = temp; temp = swap_ptr;
-        }
-        for(int i = 0; i < N; i++) singular_values[i] = sqrt(M_full[i * N + i]);
-        
-        free(Q); free(R); free(temp);
+    // 3. Normalizzazione (Locale - OpenMP)
+    double inv_R_ii = 1.0 / R_ii;
+#pragma omp parallel for
+    for (int k = 0; k < local_N; k++) {
+      local_Q_T[i * local_N + k] *= inv_R_ii;
     }
 
-    free(A_local); free(M_local); free(M_full);
+    // 4. Ortogonalizzazione sulle colonne successive
+    for (int j = i + 1; j < N; j++) {
+
+      // Prodotto scalare parziale (Locale - OpenMP)
+      double local_dot = 0.0;
+#pragma omp parallel for reduction(+ : local_dot)
+      for (int k = 0; k < local_N; k++) {
+        local_dot += local_Q_T[i * local_N + k] * local_Q_T[j * local_N + k];
+      }
+
+      // Prodotto scalare globale (Globale - MPI)
+      double global_dot = 0.0;
+      MPI_Allreduce(&local_dot, &global_dot, 1, MPI_DOUBLE, MPI_SUM,
+                    MPI_COMM_WORLD);
+      global_R[i * N + j] = global_dot;
+
+// Aggiornamento (Locale - OpenMP)
+#pragma omp parallel for
+      for (int k = 0; k < local_N; k++) {
+        local_Q_T[j * local_N + k] -= (local_Q_T[i * local_N + k] * global_dot);
+      }
+    }
+  }
+
+// RITRASPOSIZIONE LOCALE VERSO Q
+#pragma omp parallel for collapse(2)
+  for (int i = 0; i < local_N; i++) {
+    for (int j = 0; j < N; j++) {
+      local_Q[i * N + j] = local_Q_T[j * local_N + i];
+    }
+  }
+
+  free(local_Q_T);
+}
+
+// =====================================================================
+// ALGORITMO QR IBRIDO
+// =====================================================================
+void qr_algorithm_hybrid(const double *restrict local_A, int N, int local_N,
+                         int max_iter, double *restrict singular_values,
+                         int rank, int size) {
+
+  // 1. Calcolo di M = A^T * A. Essendo A distribuita per righe, sommiamo i
+  // contributi locali
+  double *global_M = (double *)malloc(N * N * sizeof(double));
+  double *local_M_partial = (double *)calloc(N * N, sizeof(double));
+
+#pragma omp parallel for
+  for (int i = 0; i < N; i++) {
+    for (int k = 0; k < local_N; k++) {
+      double A_ki = local_A[k * N + i];
+      for (int j = 0; j < N; j++) {
+        local_M_partial[i * N + j] += A_ki * local_A[k * N + j];
+      }
+    }
+  }
+
+  // Tutti ottengono la matrice M globale completa tramite Allreduce
+  MPI_Allreduce(local_M_partial, global_M, N * N, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+  free(local_M_partial);
+
+  // Mappiamo M nella sua porzione locale (vogliamo eseguire la QR distribuita)
+  double *local_M = (double *)malloc(local_N * N * sizeof(double));
+  for (int i = 0; i < local_N; i++) {
+    for (int j = 0; j < N; j++) {
+      local_M[i * N + j] = global_M[(rank * local_N + i) * N + j];
+    }
+  }
+
+  double *local_Q = (double *)malloc(local_N * N * sizeof(double));
+  double *global_R = (double *)malloc(N * N * sizeof(double));
+  double *local_temp = (double *)malloc(local_N * N * sizeof(double));
+  double *global_Q = (double *)malloc(N * N * sizeof(double));
+
+#pragma omp parallel for
+  for (int i = 0; i < local_N * N; i++) {
+    local_temp[i] = 0.0; // Reset
+  }
+
+  for (int iter = 0; iter < max_iter; iter++) {
+
+    // Decomposizione QR distribuita
+    qr_decomposition_hybrid(local_M, local_Q, global_R, N, local_N, rank);
+
+    // M_new = R * Q. Avendo Q distribuita per righe e R globale, ci serve
+    // l'intera Q globale Raccogliamo i blocchi di Q in un'unica Q globale
+    MPI_Allgather(local_Q, local_N * N, MPI_DOUBLE, global_Q, local_N * N,
+                  MPI_DOUBLE, MPI_COMM_WORLD);
+
+// temp = R * Q (ogni thread calcola solo le proprie righe)
+#pragma omp parallel for
+    for (int i = 0; i < local_N; i++) {
+      int global_i = rank * local_N + i;
+      for (int k = 0; k < N; k++) {
+        double R_ik = global_R[global_i * N + k];
+        for (int j = 0; j < N; j++) {
+          local_temp[i * N + j] += R_ik * global_Q[k * N + j];
+        }
+      }
+    }
+
+    // Scambio puntatori locali
+    double *swap_ptr = local_M;
+    local_M = local_temp;
+    local_temp = swap_ptr;
+
+#pragma omp parallel for
+    for (int i = 0; i < local_N * N; i++)
+      local_temp[i] = 0.0; // Reset
+  }
+
+  // Estrazione dei valori singolari. Essendo la matrice distribuita per righe,
+  // ogni processo possiede una porzione della diagonale principale.
+  double *local_diag = (double *)malloc(local_N * sizeof(double));
+  for (int i = 0; i < local_N; i++) {
+    local_diag[i] = sqrt(fabs(local_M[i * N + (rank * local_N + i)]));
+  }
+
+  // Raccogliamo le porzioni di diagonale per formare il vettore completo dei
+  // valori singolari
+  MPI_Allgather(local_diag, local_N, MPI_DOUBLE, singular_values, local_N,
+                MPI_DOUBLE, MPI_COMM_WORLD);
+
+  free(global_M);
+  free(local_M);
+  free(local_Q);
+  free(global_R);
+  free(local_temp);
+  free(global_Q);
+  free(local_diag);
 }
