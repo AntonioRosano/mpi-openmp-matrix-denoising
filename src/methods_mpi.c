@@ -9,19 +9,16 @@
 
 #include "methods.h"
 
-// =====================================================================
 // METODO DELLE POTENZE IBRIDO
-// =====================================================================
-double power_method_hybrid(const double *restrict local_A, int N, int local_N,
-                           int max_iter, double tol,
-                           double *restrict eigenvector, int rank, int size) {
+double power_method_hybrid(const double *restrict local_A, int N, int local_N, int max_iter, double tol, double *restrict eigenvector, int rank, int size) {
 
   double *w = (double *)malloc(N * sizeof(double));
   double *local_w = (double *)malloc(N * sizeof(double));
   double *local_temp = (double *)malloc(local_N * sizeof(double));
   double *temp = (double *)malloc(N * sizeof(double));
 
-  if (rank == 0) {
+  if (rank == 0) {      //inizializzazione: il processo 0 crea un vettore casuale e lo normalizza. 
+                        //Successivamente viene broadcastato a tutti i processi.
     double norm_sq = 0.0;
     for (int i = 0; i < N; i++) {
       eigenvector[i] = (double)rand() / RAND_MAX;
@@ -40,20 +37,22 @@ double power_method_hybrid(const double *restrict local_A, int N, int local_N,
   for (int k = 0; k < max_iter; k++) {
     lambda_old = lambda_new;
 
-// FASE 1: OpenMP Locale (temp = A * eigenvector)
-#pragma omp parallel for
+    // FASE 1: calcolo locale di temp = A * eigenvector. Poiché ogni processo ha solo un pezzo di A, 
+    // calcolerà solo un pezzo del vettore risultato (local_temp). 
+    //I thread OpenMP si dividono i cicli for.
+    #pragma omp parallel for
     for (int i = 0; i < local_N; i++) {
       double sum = 0.0;
       for (int j = 0; j < N; j++)
         sum += local_A[i * N + j] * eigenvector[j];
       local_temp[i] = sum;
     }
+    
+    //FASE 2: MPI (Gather). Tutti i pezzetti del vettore temp vengono uniti. Ora tutti i processi hanno il vettore temp completo.
+    MPI_Allgather(local_temp, local_N, MPI_DOUBLE, temp, local_N, MPI_DOUBLE, MPI_COMM_WORLD);
 
-    MPI_Allgather(local_temp, local_N, MPI_DOUBLE, temp, local_N, MPI_DOUBLE,
-                  MPI_COMM_WORLD);
-
-// FASE 3: OpenMP Locale (local_w = A^T * temp)
-#pragma omp parallel for
+    // FASE 3: calcolo locale di local_w = A^T * temp
+    #pragma omp parallel for
     for (int i = 0; i < N; i++) {
       double sum = 0.0;
       for (int j = 0; j < local_N; j++) {
@@ -92,24 +91,18 @@ double power_method_hybrid(const double *restrict local_A, int N, int local_N,
   return sqrt(lambda_new);
 }
 
-// =====================================================================
-// DECOMPOSIZIONE QR IBRIDA (Gram-Schmidt)
-// =====================================================================
-void qr_decomposition_hybrid(const double *restrict local_A,
-                             double *restrict local_Q,
-                             double *restrict global_R, int N, int local_N,
-                             int rank) {
 
-  // Matrice trasposta locale: colonne diventano righe per favorire la cache
-  // (Touch-by-all alloc)
+// DECOMPOSIZIONE QR IBRIDA (Gram-Schmidt)
+void qr_decomposition_hybrid(const double *restrict local_A, double *restrict local_Q, double *restrict global_R, int N, int local_N, int rank) {
+
   double *local_Q_T = (double *)malloc(N * local_N * sizeof(double));
 
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int i = 0; i < N * N; i++)
     global_R[i] = 0.0;
 
-// TRASPOSIZIONE LOCALE PREVENTIVA
-#pragma omp parallel for collapse(2)
+  // TRASPOSIZIONE LOCALE PREVENTIVA
+  #pragma omp parallel for collapse(2)
   for (int i = 0; i < local_N; i++) {
     for (int j = 0; j < N; j++) {
       local_Q_T[j * local_N + i] = local_A[i * N + j];
@@ -119,7 +112,7 @@ void qr_decomposition_hybrid(const double *restrict local_A,
   for (int i = 0; i < N; i++) {
     // 1. Calcolo Norma Parziale (Locale - OpenMP)
     double local_norm_sq = 0.0;
-#pragma omp parallel for reduction(+ : local_norm_sq)
+    #pragma omp parallel for reduction(+ : local_norm_sq)
     for (int k = 0; k < local_N; k++) {
       local_norm_sq += local_Q_T[i * local_N + k] * local_Q_T[i * local_N + k];
     }
@@ -134,7 +127,7 @@ void qr_decomposition_hybrid(const double *restrict local_A,
 
     // 3. Normalizzazione (Locale - OpenMP)
     double inv_R_ii = 1.0 / R_ii;
-#pragma omp parallel for
+    #pragma omp parallel for
     for (int k = 0; k < local_N; k++) {
       local_Q_T[i * local_N + k] *= inv_R_ii;
     }
@@ -144,7 +137,7 @@ void qr_decomposition_hybrid(const double *restrict local_A,
 
       // Prodotto scalare parziale (Locale - OpenMP)
       double local_dot = 0.0;
-#pragma omp parallel for reduction(+ : local_dot)
+      #pragma omp parallel for reduction(+ : local_dot)
       for (int k = 0; k < local_N; k++) {
         local_dot += local_Q_T[i * local_N + k] * local_Q_T[j * local_N + k];
       }
@@ -155,16 +148,16 @@ void qr_decomposition_hybrid(const double *restrict local_A,
                     MPI_COMM_WORLD);
       global_R[i * N + j] = global_dot;
 
-// Aggiornamento (Locale - OpenMP)
-#pragma omp parallel for
+    // Aggiornamento (Locale - OpenMP)
+    #pragma omp parallel for
       for (int k = 0; k < local_N; k++) {
         local_Q_T[j * local_N + k] -= (local_Q_T[i * local_N + k] * global_dot);
       }
     }
   }
 
-// RITRASPOSIZIONE LOCALE VERSO Q
-#pragma omp parallel for collapse(2)
+  // RITRASPOSIZIONE LOCALE VERSO Q
+  #pragma omp parallel for collapse(2)
   for (int i = 0; i < local_N; i++) {
     for (int j = 0; j < N; j++) {
       local_Q[i * N + j] = local_Q_T[j * local_N + i];
@@ -174,12 +167,9 @@ void qr_decomposition_hybrid(const double *restrict local_A,
   free(local_Q_T);
 }
 
-// =====================================================================
+
 // ALGORITMO QR IBRIDO
-// =====================================================================
-void qr_algorithm_hybrid(const double *restrict local_A, int N, int local_N,
-                         int max_iter, double *restrict singular_values,
-                         int rank, int size) {
+void qr_algorithm_hybrid(const double *restrict local_A, int N, int local_N, int max_iter, double *restrict singular_values, int rank, int size) {
 
   // 1. Calcolo di M = A^T * A. Essendo A distribuita per righe, sommiamo i
   // contributi locali

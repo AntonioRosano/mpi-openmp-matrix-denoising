@@ -10,7 +10,7 @@
 int main(int argc, char *argv[]) {
   int provided;
 
-  // Inizializzazione ibrida: livello MPI_THREAD_FUNNELED (OpenMP calcola, il
+  // inizializzazione ibrida: livello MPI_THREAD_FUNNELED (OpenMP calcola, il
   // Master comunica)
   MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
   int local_N = N / size;
   double *matrix_1d = NULL;
 
-  // Lettura file limitata al Master
+  // lettura file limitata al Master
   if (rank == 0) {
     matrix_1d = (double *)malloc(N * N * sizeof(double));
     if (matrix_1d == NULL) {
@@ -57,11 +57,10 @@ int main(int argc, char *argv[]) {
     read_matrix(filename, matrix_1d, N);
   }
 
-  // Buffer locale (allocato con Touch-by-all policy nativamente da OpenMP in
-  // background)
+  // buffer locale
   double *local_A = (double *)malloc(local_N * N * sizeof(double));
 
-  // Scatter: divide la matrice a strisce orizzontali
+  // scatter: divide la matrice a strisce orizzontali
   MPI_Scatter(matrix_1d, local_N * N, MPI_DOUBLE, local_A, local_N * N,
               MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
